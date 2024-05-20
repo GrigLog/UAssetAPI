@@ -35,17 +35,21 @@ namespace UAssetAPI.PropertyTypes.Objects
         {
             if (reader.Asset.HasUnversionedProperties)
             {
-                if (reader.Asset.Mappings.TryGetPropertyData(Name, Ancestry, reader.Asset, out UsmapEnumData enumDat1))
+                UsmapSchema res = reader.Asset.Mappings.GetSchemaFromName(Ancestry.Parent.Value.Value, reader.Asset, false);
+                if (res != null)
                 {
-                    EnumType = FName.DefineDummy(reader.Asset, enumDat1.Name);
-                    InnerType = FName.DefineDummy(reader.Asset, enumDat1.InnerType.Type.ToString());
-                }
+                    if (reader.Asset.Mappings.TryGetPropertyData(Name, Ancestry, reader.Asset, out UsmapEnumData enumDat1))
+                    {
+                        EnumType = FName.DefineDummy(reader.Asset, enumDat1.Name);
+                        InnerType = FName.DefineDummy(reader.Asset, enumDat1.InnerType.Type.ToString());
+                    }
 
-                if (InnerType?.Value.Value == "ByteProperty")
-                {
-                    int enumIndice = reader.ReadByte();
-                    Value = enumIndice == byte.MaxValue ? null : FName.DefineDummy(reader.Asset, reader.Asset.Mappings.EnumMap[EnumType.Value.Value].Values[enumIndice]);
-                    return;
+                    if (InnerType?.Value.Value == "ByteProperty")
+                    {
+                        int enumIndice = reader.ReadByte();
+                        Value = enumIndice == byte.MaxValue ? null : FName.DefineDummy(reader.Asset, reader.Asset.Mappings.EnumMap[EnumType.Value.Value].Values[enumIndice]);
+                        return;
+                    }
                 }
             }
 
@@ -61,11 +65,19 @@ namespace UAssetAPI.PropertyTypes.Objects
         {
             if (writer.Asset.HasUnversionedProperties)
             {
-                if (InnerType?.Value?.Value == "ByteProperty")
-                {
-                    int enumIndice = Value == null ? byte.MaxValue : (byte)writer.Asset.Mappings.EnumMap[EnumType.Value.Value].Values.Where(pair => pair.Value == Value.Value.Value).Select(pair => pair.Key).FirstOrDefault(); // wow this code is stupid
-                    writer.Write((byte)enumIndice);
-                    return sizeof(byte);
+                UsmapSchema res = writer.Asset.Mappings.GetSchemaFromName(Ancestry.Parent.Value.Value, writer.Asset, false);
+                if (res != null)
+                { 
+                    if (InnerType?.Value?.Value == "ByteProperty")
+                    {
+                        int enumIndice = Value == null ? byte.MaxValue : 
+                            (byte)writer.Asset.Mappings.EnumMap[EnumType.Value.Value].Values
+                            .Where(pair => pair.Value == Value.Value.Value)
+                            .Select(pair => pair.Key)
+                            .FirstOrDefault(); // wow this code is stupid
+                        writer.Write((byte)enumIndice);
+                        return sizeof(byte);
+                    }
                 }
             }
 
